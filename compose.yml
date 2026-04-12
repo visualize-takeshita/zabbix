@@ -1,0 +1,68 @@
+services:
+
+  # --- Database ---
+  zabbix-db:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --log-bin-trust-function-creators=1
+    volumes:
+      - zabbix-db-data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_ROOT_PASSWORD=zabbix
+    restart: always
+
+  # --- Zabbix Server ---
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:alpine-7.4-latest
+    ports:
+      - "10061:10051"
+    volumes:
+      - ./zabbix/alertscripts:/usr/lib/zabbix/alertscripts
+      - ./zabbix/externalscripts:/usr/lib/zabbix/externalscripts
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+    depends_on:
+      - zabbix-db
+    restart: always
+
+  # --- Zabbix Web UI (Nginx) ---
+  # default: Admin/zabbix
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-mysql:alpine-7.4-latest
+    ports:
+      - "8080:8080"
+    environment:
+      - ZBX_SERVER_HOST=zabbix-server
+      - DB_SERVER_HOST=zabbix-db
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - PHP_TZ=Asia/Tokyo
+    depends_on:
+      - zabbix-db
+    restart: always
+
+  # --- Zabbix Agent (Self Monitoring) ---
+  zabbix-agent2:
+    image: zabbix/zabbix-agent2:alpine-7.4-latest
+    # 特権モードはホストのリソース取得（proc/sys等）に必要なら残す
+    privileged: true
+    environment:
+      # 1. Web UI の「ホスト名」と完全に一致させる
+      - ZBX_HOSTNAME=Zabbix server
+      # 2. Server からの接続許可（Passive用）
+      - ZBX_SERVER_HOST=zabbix-server
+      # 3. Server へのデータ送信先（Active/自動登録用）
+      - ZBX_SERVER_ACTIVE=zabbix-server
+    restart: always
+
+volumes:
+  zabbix-db-data:
