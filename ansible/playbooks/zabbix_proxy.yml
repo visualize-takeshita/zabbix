@@ -1,0 +1,8 @@
+---
+# Zabbix Proxy ノードへのデプロイ（SSH）。インベントリのグループ zabbix_proxy を対象とする。
+- name: Deploy Zabbix Proxy
+  hosts: zabbix_proxy
+  become: true
+  gather_facts: true
+  roles:
+    - role: zabbix_proxy

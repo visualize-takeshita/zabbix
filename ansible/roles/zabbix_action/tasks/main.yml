@@ -1,0 +1,19 @@
+- name: Create Autoregistration action for Linux hosts
+  community.zabbix.zabbix_action:
+    name: "Auto registration Linux"
+    event_source: auto_registration
+    esc_period: 1m
+
+
+    # 実行条件: メタデータに "Linux" が含まれる場合
+    conditions:
+      - type: host_metadata
+        operator: contains
+        value: "Linux"
+
+    # 実行するアクション
+    operations:
+      - type: add_host
+      - type: link_to_template
+        templates:
+        - "Linux by Zabbix agent"
