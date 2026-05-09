@@ -16,4 +16,4 @@
       - type: add_host
       - type: link_to_template
         templates:
-        - "Linux by Zabbix agent"
+        - "Linux minimal"
