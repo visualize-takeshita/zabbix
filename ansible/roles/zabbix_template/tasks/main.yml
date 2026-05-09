@@ -1,0 +1,18 @@
+- name: Create template
+  community.zabbix.zabbix_template:
+    template_name: "{{ zabbix_template_name }}"
+    template_groups: "{{ zabbix_template_group }}"
+
+#- name: "{{ zabbix_template_name }}" Create zabbix items
+- name:  Create zabbix items
+  community.zabbix.zabbix_item:
+    template_name: "{{ zabbix_template_name }}"
+    name: "{{ item.name }}"
+    params:
+      #item_name: "{{ item.name }}"
+      key: "{{ item.key }}"
+      interval: "{{ item.interval }}"
+      value_type: "{{ item.value_type }}"
+      type: zabbix_agent
+
+  loop: "{{ zabbix_items }}"

@@ -1,0 +1,30 @@
+zabbix_template_name: "Linux minimal"
+
+zabbix_template_group: Templates/Operating systems
+
+zabbix_items:
+
+  - name: CPU Load 1min
+    key: system.cpu.load[all,avg1]
+    value_type: numeric_float
+    interval: 60s
+
+  - name: Memory usage
+    key: vm.memory.utilization
+    value_type: numeric_float
+    interval: 60s
+  
+  - name: Root FS usage
+    key: vfs.fs.size[/,pused]
+    value_type: numeric_float
+    interval: 300s
+  
+  - name: Agent ping
+    key: agent.ping
+    value_type: numeric_unsigned
+    interval: 60s
+  
+  - name: System uptime
+    key: system.uptime
+    value_type: numeric_unsigned
+    interval: 1h
