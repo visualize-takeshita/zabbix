@@ -1,0 +1,30 @@
+- name: Disable default Admin user
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "user.update"
+      params:
+        userid: "{{ item }}"
+        roleid: "1"
+  loop:
+    - "1" # Admin
+    - "2" # Guest
+  register: zabbix_result
+  failed_when: zabbix_result.json.error is defined
+
+- name: Update Zabbix server host interface and template
+  community.zabbix.zabbix_host:
+    host_name: "Zabbix server"
+    visible_name: "Zabbix server"
+    host_groups:
+      - "Zabbix servers"
+    interfaces:
+      - type: agent
+        main: yes
+        dns: "zabbix-agent2"
