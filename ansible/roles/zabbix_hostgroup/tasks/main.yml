@@ -1,0 +1,5 @@
+- name: Create host group
+  community.zabbix.zabbix_group:
+    host_groups:
+      - "{{ project }}"
+        #group_name: "Project/{{ project }}"

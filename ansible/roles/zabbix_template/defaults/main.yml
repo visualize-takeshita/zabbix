@@ -13,17 +13,17 @@ zabbix_items:
     key: vm.memory.utilization
     value_type: numeric_float
     interval: 60s
-  
+
   - name: Root FS usage
     key: vfs.fs.size[/,pused]
     value_type: numeric_float
     interval: 300s
-  
+
   - name: Agent ping
     key: agent.ping
     value_type: numeric_unsigned
     interval: 60s
-  
+
   - name: System uptime
     key: system.uptime
     value_type: numeric_unsigned

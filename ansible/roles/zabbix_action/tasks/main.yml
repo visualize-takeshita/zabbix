@@ -7,9 +7,16 @@
 
     # 実行条件: メタデータに "Linux" が含まれる場合
     conditions:
+      # - type: host_metadata
+      #   operator: contains
+      #   value: "project:nadv os:linux"
       - type: host_metadata
         operator: contains
-        value: "Linux"
+        value: "project:nadv"
+
+      - type: host_metadata
+        operator: contains
+        value: "os:linux"
 
     # 実行するアクション
     operations:
@@ -17,3 +24,6 @@
       - type: link_to_template
         templates:
         - "Linux minimal"
+      - type: add_to_host_group
+        host_groups:
+          - "{{ project }}"
