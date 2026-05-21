@@ -1,40 +1,40 @@
+---
 - name: Create template
   community.zabbix.zabbix_template:
     template_name: "{{ zabbix_template_name }}"
     template_groups: "{{ zabbix_template_group }}"
+    macros:
+      - macro: "{$DISK_USAGE_THRESHOLD}"
+        value: "90"
+  register: template_result
 
-# 2. 作成したテンプレートにディスカバリルールを割り当て
-- name: Create Discovery Rule under the Template
-  community.zabbix.zabbix_discoveryrule:
-    name: "df"
-    template_name: "{{ zabbix_template_name }}"
+- name: Get Template ID
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: template.get
+      params:
+        filter:
+          host: "{{ zabbix_template_name }}"
+        output: ["templateid"]
+      id: 1
+    return_content: yes
+  register: template_id_result
 
-    params:
-        type: zabbix_agent
-        key: 'vfs.fs.discovery'
-        interval: 1h
-        enabled: True
+# Discovery Rule の作成と設定
+- name: Import Discovery Rule tasks
+  ansible.builtin.import_tasks: discovery.yml
 
-- name: Create Item Prototype  the Template
-  community.zabbix.zabbix_itemprototype:
-    name: '{% raw %}{#FSNAME}:Used space{% endraw %}'
-    template_name: "{{ zabbix_template_name }}"
-    discoveryrule_name: "df"
-    params:
-      type: zabbix_agent
-      key: "{% raw %}vfs.fs.size[{#FSNAME},pused]{% endraw %}"
-      value_type: numeric_unsigned
-      interval: 5m
-      status: enabled
+# Item Prototype の作成
+- name: Import Item Prototype tasks
+  ansible.builtin.import_tasks: itemprototype.yml
 
-- name: Create Trigger Prototype the Template
-  community.zabbix.zabbix_triggerprototype:
-    name: '{% raw %}Free disk space is less than 10% on volume {#FSNAME}{% endraw %}'
-    template_name: "{{ zabbix_template_name }}"
-    params:
-      #severity: high
-      severity: warning
-      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_name }}{% raw %}/vfs.fs.size[{#FSNAME},pused])>90{% endraw %}'
-      enabled: True
-
-
+# Trigger Prototype の作成
+- name: Import Trigger Prototype tasks
+  ansible.builtin.import_tasks: triggerprototype.yml

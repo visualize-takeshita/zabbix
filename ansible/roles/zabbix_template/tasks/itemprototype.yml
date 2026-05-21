@@ -1,0 +1,29 @@
+---
+# Item Prototype の作成
+- name: Create Item Prototype via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.create
+      params:
+        hostid: "{{ template_id_result.json.result[0].templateid }}"
+        name: "{{ '{#FSNAME}:Used space' }}"
+        key_: "{{ 'vfs.fs.size[{#FSNAME},pused]' }}"
+        ruleid: "{{ discoveryrule_result.result[0].itemids[0] }}"
+        type: 0
+        value_type: 3
+        delay: 5m
+        status: 0
+      id: 3
+    return_content: yes
+    status_code: [200, -1]
+  register: itemprototype_result
+  failed_when:
+    - itemprototype_result.json.error is defined
+    - itemprototype_result.json.error.data is not search("already exists")

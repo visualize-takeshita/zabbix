@@ -16,16 +16,21 @@ This is an Ansible playbook collection for managing Zabbix monitoring infrastruc
 ### Role Structure
 Each role in the `roles/` directory handles a specific Zabbix resource type:
 
-- **zabbix_template**: Creates monitoring templates with items, discovery rules, item prototypes, and trigger prototypes
-  - Uses `community.zabbix.zabbix_template`, `community.zabbix.zabbix_item`, `community.zabbix.zabbix_discoveryrule`, `community.zabbix.zabbix_itemprototype`, and `community.zabbix.zabbix_triggerprototype` modules
-  - Defaults in `defaults/main.yml` define template name, group, and items to monitor
+- **zabbix_template**: Creates monitoring templates with discovery rules, item prototypes, and trigger prototypes
+  - File structure:
+    - `tasks/main.yml`: Template creation, templateid retrieval, and imports other task files
+    - `tasks/discovery.yml`: Discovery rule creation and filter configuration
+    - `tasks/itemprototype.yml`: Item prototype creation via JSON-RPC
+    - `tasks/triggerprototype.yml`: Trigger prototype creation
+  - Uses `community.zabbix.zabbix_template`, `community.zabbix.zabbix_discoveryrule`, and JSON-RPC for advanced features
+  - Defaults in `defaults/main.yml` define template name and group
   - Default template: "Linux minimal" with:
-    - Static items: CPU, memory, uptime, agent ping
-    - LLD discovery rules for automatic monitoring:
-      - **Filesystem discovery** (`vfs.fs.discovery`): Auto-discovers mounted filesystems and monitors used space percentage
-      - **Network interface discovery** (ready for extension): Can discover network interfaces automatically
-    - Auto-generated item prototypes from discovery rules (e.g., per-filesystem usage monitoring)
-    - Trigger prototypes for automatic alerting (e.g., disk space warnings)
+    - User macros: `{$DISK_USAGE_THRESHOLD}` (default: 90)
+    - **LLD discovery rule** (`vfs.fs.discovery`): Auto-discovers mounted filesystems
+    - **Filter configuration**: Excludes specific mount points (/, /var/lib/mysql, /var/sy, /backup) using NOT_MATCHES_REGEX
+    - **Item prototypes**: Per-filesystem disk usage monitoring (`vfs.fs.size[{#FSNAME},pused]`)
+    - **Trigger prototypes**: Alerts when disk usage exceeds `{$DISK_USAGE_THRESHOLD}%`
+  - Uses JSON-RPC directly for features not supported by Ansible modules (filters, complex configurations)
 
 - **zabbix_user**: Manages Zabbix users and roles
   - Currently disables default Admin/Guest users and updates Zabbix server host configuration
@@ -64,9 +69,11 @@ These are referenced in `hosts` inventory file via `lookup('env', '...')`
 
 ### Run a specific playbook
 ```bash
-ansible-playbook zabbix_user.yml
-ansible-playbook zabbix_template.yml
+direnv exec . ansible-playbook zabbix_user.yml
+direnv exec . ansible-playbook zabbix_template.yml
 ```
+
+Note: Always use `direnv exec .` to ensure environment variables are loaded.
 
 ### Validate playbook syntax
 ```bash
@@ -87,7 +94,96 @@ ansible-playbook -vv zabbix_user.yml
 
 - **ansible.cfg**: Core Ansible settings (inventory location, roles path, SSH options)
 - **hosts**: Inventory file defining Zabbix host and connection parameters
-- **.envrc**: direnv configuration for Python 3 environment
+- **.envrc**: direnv configuration for Python 3 environment and environment variables
+- **README.md**: User-facing documentation
+- **CLAUDE.md**: This file - guidance for Claude Code
+
+## Key Implementation Patterns
+
+### 1. No Fact Gathering
+All playbooks use `gather_facts: no` since connection is httpapi (not SSH).
+
+### 2. Environment Variable Substitution
+Connection credentials and URLs are injected at runtime via `lookup('env', 'VAR_NAME')`.
+
+### 3. JSON-RPC Direct Calls
+When Ansible modules don't support certain features (e.g., discovery rule filters), use `uri` module to call Zabbix JSON-RPC API directly:
+```yaml
+- name: Update discovery rule filter
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "discoveryrule.update"
+      params:
+        itemid: "{{ discoveryrule_result.result[0].itemids[0] }}"
+        filter:
+          evaltype: 0
+          conditions:
+            - macro: "{#FSNAME}"
+              value: "^/$|^/var/lib/mysql$"
+              operator: 8
+      id: 1
+```
+
+### 4. Jinja2 Template Escaping
+Zabbix macros like `{#FSNAME}` or `{$MACRO}` can be misinterpreted as Jinja2 comment tags. Always escape them:
+```yaml
+# Bad: '{#FSNAME}'
+# Good: "{{ '{#FSNAME}' }}"
+```
+
+### 5. Idempotency
+- Fetch current state before updating
+- Use `changed_when` to indicate when changes occur
+- Use `failed_when` to handle expected errors (e.g., "already exists")
+
+Example:
+```yaml
+- name: Get current filter
+  uri: ...
+  register: current_filter
+
+- name: Update filter
+  uri: ...
+  changed_when: >
+    current_filter.json.result[0].filter.evaltype | string != "0" or
+    current_filter.json.result[0].filter.conditions[0].value != "expected_value"
+```
+
+### 6. Task File Organization
+Complex roles should split tasks into separate files:
+- `main.yml`: Primary logic and imports
+- `discovery.yml`: Discovery rule specific tasks
+- `itemprototype.yml`: Item prototype tasks
+- `triggerprototype.yml`: Trigger prototype tasks
+
+Use `ansible.builtin.import_tasks` to include them:
+```yaml
+- name: Import Discovery Rule tasks
+  ansible.builtin.import_tasks: discovery.yml
+```
+
+### 7. Dynamic ID Resolution
+Ansible modules may not return IDs in expected format. Always:
+1. Register the result
+2. Debug the structure if needed
+3. Use correct path to access IDs
+
+Example:
+```yaml
+- name: Create discovery rule
+  community.zabbix.zabbix_discoveryrule: ...
+  register: discoveryrule_result
+
+# Result structure: discoveryrule_result.result[0].itemids[0]
+# NOT: discoveryrule_result.itemid
+```
 
 ## Adding New Playbooks/Roles
 
@@ -101,14 +197,70 @@ ansible-playbook -vv zabbix_user.yml
      roles:
        - zabbix_<resource>
    ```
+4. Create `roles/zabbix_<resource>/README.md` documenting the role
 
-## Key Patterns
+## Troubleshooting Tips
 
-- **No fact gathering**: All playbooks use `gather_facts: no` since connection is httpapi
-- **Environment variable substitution**: Connection credentials and URLs are injected at runtime
-- **Metadata-based conditions**: Actions use host metadata (e.g., `project:nadv os:linux`) for targeting
-- **Commented examples**: Several tasks have commented-out alternatives or experimental code (check for `#` in task definitions)
+### Environment Variables Not Loading
+```bash
+direnv allow
+direnv exec . ansible-playbook <playbook>.yml
+```
+
+### Debugging API Responses
+Add debug tasks to inspect registered variables:
+```yaml
+- name: Debug result
+  debug:
+    var: variable_name
+```
+
+### Testing JSON-RPC Calls
+Convert `uri` tasks to curl for manual testing:
+```bash
+curl -X POST "${ZABBIX_URL}" \
+  -H "Content-Type: application/json-rpc" \
+  -H "Authorization: Bearer ${ZABBIX_API_TOKEN}" \
+  -d '{"jsonrpc":"2.0","method":"method.name","params":{...},"id":1}'
+```
+
+### Common Issues
+1. **Missing `hostid` parameter**: For item prototypes, use `hostid` with templateid value (not `templateid` parameter)
+2. **Jinja2 syntax errors**: Escape Zabbix macros properly
+3. **Empty result arrays**: Check if resources were created successfully before accessing array elements
+4. **formulaid not supported**: Some Zabbix versions don't require `formulaid` in filter conditions
 
 ## Dependencies
 
-Requires `community.zabbix` collection (typically installed via `requirements.yml` or galaxy).
+- Requires `community.zabbix` collection (typically installed via `requirements.yml` or galaxy)
+- Python dependencies managed via direnv and `.envrc`
+
+## Documentation Standards
+
+- Each role should have a `README.md` with:
+  - Overview and features
+  - Requirements
+  - Variables
+  - Resources created
+  - Usage examples
+  - Customization guide
+  - Troubleshooting
+
+## Best Practices for Claude Code
+
+When working on this codebase:
+
+1. **Always use direnv**: Run playbooks with `direnv exec . ansible-playbook ...`
+2. **Check existing patterns**: Look at `zabbix_template` role for JSON-RPC examples
+3. **Test incrementally**: Add debug tasks to verify data structures
+4. **Maintain idempotency**: Always check current state before making changes
+5. **Document changes**: Update relevant README.md files
+6. **Escape macros**: Use `"{{ '{#MACRO}' }}"` for Zabbix macros in YAML
+7. **Verify paths**: Module return values may differ; always debug register variables first
+8. **Split complex tasks**: Use separate task files for better organization
+
+## Reference
+
+- [Zabbix API Documentation](https://www.zabbix.com/documentation/current/manual/api)
+- [community.zabbix Collection Docs](https://docs.ansible.com/ansible/latest/collections/community/zabbix/)
+- [Ansible httpapi Connection](https://docs.ansible.com/ansible/latest/plugins/connection/httpapi.html)

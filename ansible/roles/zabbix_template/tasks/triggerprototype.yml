@@ -1,0 +1,10 @@
+---
+# Trigger Prototype の作成
+- name: Create Trigger Prototype the Template
+  community.zabbix.zabbix_triggerprototype:
+    name: '{% raw %}Disk usage is more than {$DISK_USAGE_THRESHOLD}% on volume {#FSNAME}{% endraw %}'
+    template_name: "{{ zabbix_template_name }}"
+    params:
+      severity: warning
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_name }}{% raw %}/vfs.fs.size[{#FSNAME},pused])>{$DISK_USAGE_THRESHOLD}{% endraw %}'
+      enabled: True
