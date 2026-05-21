@@ -6,6 +6,8 @@
     macros:
       - macro: "{$DISK_USAGE_THRESHOLD}"
         value: "90"
+      - macro: "{$CPU_LOAD_THRESHOLD}"
+        value: "10"
 
 - name: Get Template ID
   uri:
@@ -29,6 +31,10 @@
 # Template Items の作成
 - name: Import Template Items tasks
   ansible.builtin.import_tasks: items.yml
+
+# Template Triggers の作成
+- name: Import Template Triggers tasks
+  ansible.builtin.import_tasks: triggers.yml
 
 # Discovery Rule の作成と設定
 - name: Import Discovery Rule tasks

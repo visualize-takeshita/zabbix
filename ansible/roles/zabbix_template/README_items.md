@@ -321,6 +321,211 @@ loop_control:
 - `net.if.in[<if>,<mode>]`: 受信トラフィック
 - `net.if.out[<if>,<mode>]`: 送信トラフィック
 
+## Template Triggers
+
+Items に対するアラート条件（Triggers）を定義します。
+
+### 作成される Triggers
+
+#### 1. Zabbix agent is not available
+Zabbix agent の可用性を監視し、応答がない場合にアラートを発報します。
+
+| 項目 | 値 |
+|------|-----|
+| **名前** | Zabbix agent is not available |
+| **Expression** | `last(/Linux minimal/agent.ping)=0` |
+| **Priority** | Disaster（致命的な障害） |
+| **説明** | Zabbix agent on the host is not responding |
+
+**条件**: Agent ping の最新値が 0（応答なし）の場合
+
+**対応**:
+- ホストの電源状態を確認
+- Zabbix agent サービスの起動状態を確認
+- ネットワーク接続を確認
+- ファイアウォール設定を確認
+
+#### 2. Root filesystem usage is more than {$DISK_USAGE_THRESHOLD}%
+ルートファイルシステムのディスク使用率が閾値を超えた場合にアラートを発報します。
+
+| 項目 | 値 |
+|------|-----|
+| **名前** | Root filesystem usage is more than {$DISK_USAGE_THRESHOLD}% |
+| **Expression** | `last(/Linux minimal/vfs.fs.size[/,pused])>{$DISK_USAGE_THRESHOLD}` |
+| **Priority** | Warning（警告） |
+| **説明** | Root filesystem (/) usage has exceeded the threshold |
+
+**条件**: ルートファイルシステムの使用率がマクロ `{$DISK_USAGE_THRESHOLD}`（デフォルト: 90%）を超えた場合
+
+**対応**:
+- 不要なファイルを削除
+- ログローテーションを確認
+- 古いログファイルをアーカイブまたは削除
+- 必要に応じてディスク容量を増設
+
+**カスタマイズ**:
+- テンプレートまたはホストレベルで `{$DISK_USAGE_THRESHOLD}` マクロの値を変更可能
+
+#### 3. CPU load is high
+CPU 負荷が高い状態を検知します。
+
+| 項目 | 値 |
+|------|-----|
+| **名前** | CPU load is high |
+| **Expression** | `last(/Linux minimal/system.cpu.load[all,avg1])>{$CPU_LOAD_THRESHOLD}` |
+| **Priority** | Average（軽度の障害） |
+| **説明** | CPU load average (1 min) is higher than {$CPU_LOAD_THRESHOLD} |
+
+**条件**: 1分間の平均 CPU 負荷がマクロ `{$CPU_LOAD_THRESHOLD}`（デフォルト: 10）を超えた場合
+
+**対応**:
+- CPU を大量に消費しているプロセスを特定（`top`, `htop`）
+- 不要なプロセスを停止
+- アプリケーションの最適化を検討
+- 必要に応じて CPU リソースを増強
+
+**カスタマイズ**:
+- テンプレートまたはホストレベルで `{$CPU_LOAD_THRESHOLD}` マクロの値を変更可能
+- CPU コア数に応じて閾値を調整することを推奨：
+  - 4コア: 閾値 4-8
+  - 8コア: 閾値 8-16
+  - 16コア: 閾値 16-32
+
+### Triggers 変数定義
+
+`defaults/main.yml` で定義されています：
+
+```yaml
+zabbix_triggers:
+
+  - name: 'Zabbix agent is not available'
+    expression: 'last(/{{ zabbix_template_name }}/agent.ping)=0'
+    priority: disaster
+    description: 'Zabbix agent on the host is not responding'
+
+  - name: 'Root filesystem usage is more than {$DISK_USAGE_THRESHOLD}%'
+    expression: 'last(/{{ zabbix_template_name }}/vfs.fs.size[/,pused])>{$DISK_USAGE_THRESHOLD}'
+    priority: warning
+    description: 'Root filesystem (/) usage has exceeded the threshold'
+
+  - name: 'CPU load is high'
+    expression: 'last(/{{ zabbix_template_name }}/system.cpu.load[all,avg1])>{$CPU_LOAD_THRESHOLD}'
+    priority: average
+    description: 'CPU load average (1 min) is higher than {$CPU_LOAD_THRESHOLD}'
+```
+
+### Priority（重要度）レベル
+
+Zabbix API での数値マッピング：
+
+| Priority 名 | 数値 | 説明 |
+|------------|------|------|
+| `disaster` | 5 | 致命的な障害 |
+| `high` | 4 | 重大な障害 |
+| `average` | 3 | 軽度の障害 |
+| `warning` | 2 | 警告 |
+| `information` | 1 | 情報 |
+| `not_classified` | 0 | 未分類 |
+
+### Triggers のカスタマイズ
+
+#### 既存 Trigger の変更
+
+閾値や重要度を変更：
+
+```yaml
+zabbix_triggers:
+  - name: 'CPU load is high'
+    expression: 'last(/{{ zabbix_template_name }}/system.cpu.load[all,avg1])>5'  # 10 → 5 に変更
+    priority: high  # average → high に変更
+    description: 'CPU load average (1 min) is higher than 5'
+```
+
+#### 新しい Trigger の追加
+
+メモリ使用率の Trigger を追加：
+
+```yaml
+zabbix_triggers:
+  # 既存 triggers...
+
+  - name: 'Memory usage is high'
+    expression: 'last(/{{ zabbix_template_name }}/memory.usage.percent)>90'
+    priority: warning
+    description: 'Memory usage has exceeded 90%'
+```
+
+System uptime の Trigger を追加（再起動検知）：
+
+```yaml
+zabbix_triggers:
+  # 既存 triggers...
+
+  - name: 'System has been restarted'
+    expression: 'last(/{{ zabbix_template_name }}/system.uptime)<600'
+    priority: information
+    description: 'System uptime is less than 10 minutes'
+```
+
+### 実装の詳細
+
+`tasks/triggers.yml` での実装：
+
+1. **Priority の変換**:
+   ```jinja2
+   priority: >-
+     {{
+       5 if trigger.priority == 'disaster' else
+       4 if trigger.priority == 'high' else
+       3 if trigger.priority == 'average' else
+       2 if trigger.priority == 'warning' else
+       1 if trigger.priority == 'information' else
+       0
+     }}
+   ```
+
+2. **冪等性の確保**:
+   - "already exists" エラーを無視
+   - 既存の trigger は再作成しない
+
+3. **Expression の形式**:
+   - 最新の Zabbix 形式: `last(/template_name/item_key)`
+   - マクロ参照: `{$MACRO_NAME}`
+
+### Trigger Expression の例
+
+**等価比較**:
+```
+last(/template/item.key)=0
+last(/template/item.key)=1
+```
+
+**大小比較**:
+```
+last(/template/item.key)>90
+last(/template/item.key)<10
+```
+
+**マクロ使用**:
+```
+last(/template/item.key)>{$THRESHOLD}
+```
+
+**複数条件（AND）**:
+```
+last(/template/item1)>90 and last(/template/item2)<10
+```
+
+**複数条件（OR）**:
+```
+last(/template/item1)>90 or last(/template/item2)>90
+```
+
+**時間ベース**:
+```
+last(/template/system.uptime)<600  # 10分未満
+```
+
 ## ライセンス
 
 MIT

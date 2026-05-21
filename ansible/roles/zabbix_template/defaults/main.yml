@@ -31,3 +31,20 @@ zabbix_items:
     key: system.uptime
     value_type: numeric_unsigned
     interval: 1h
+
+zabbix_triggers:
+
+  - name: 'Zabbix agent is not available'
+    expression: 'last(/{{ zabbix_template_name }}/agent.ping)=0'
+    priority: disaster
+    description: 'Zabbix agent on the host is not responding'
+
+  - name: 'Root filesystem usage is more than {$DISK_USAGE_THRESHOLD}%'
+    expression: 'last(/{{ zabbix_template_name }}/vfs.fs.size[/,pused])>{$DISK_USAGE_THRESHOLD}'
+    priority: warning
+    description: 'Root filesystem (/) usage has exceeded the threshold'
+
+  - name: 'CPU load is high'
+    expression: 'last(/{{ zabbix_template_name }}/system.cpu.load[all,avg1])>{$CPU_LOAD_THRESHOLD}'
+    priority: average
+    description: 'CPU load average (1 min) is higher than {$CPU_LOAD_THRESHOLD}'

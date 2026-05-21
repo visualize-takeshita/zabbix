@@ -1,0 +1,37 @@
+---
+# Template Triggers の作成
+- name: Create template triggers via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: trigger.create
+      params:
+        description: "{{ trigger.name }}"
+        expression: "{{ trigger.expression }}"
+        priority: >-
+          {{
+            5 if trigger.priority == 'disaster' else
+            4 if trigger.priority == 'high' else
+            3 if trigger.priority == 'average' else
+            2 if trigger.priority == 'warning' else
+            1 if trigger.priority == 'information' else
+            0
+          }}
+        comments: "{{ trigger.description | default('') }}"
+      id: "{{ 20 + (ansible_loop.index0 | int) }}"
+    return_content: yes
+    status_code: [200, -1]
+  loop: "{{ zabbix_triggers }}"
+  loop_control:
+    loop_var: trigger
+    extended: yes
+  register: triggers_result
+  failed_when:
+    - triggers_result.json.error is defined
+    - triggers_result.json.error.data is not search("already exists")
