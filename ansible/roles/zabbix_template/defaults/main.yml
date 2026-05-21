@@ -9,9 +9,12 @@ zabbix_items:
     value_type: numeric_float
     interval: 60s
 
-  - name: Memory usage
-    key: vm.memory.utilization
+  - name: Memory usage %
+    type: calculated
+    key: memory.usage.percent
     value_type: numeric_float
+    units: '%'
+    params: '100 - last(//vm.memory.size[pavailable])'
     interval: 60s
 
   - name: Root FS usage
