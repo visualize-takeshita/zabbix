@@ -3,11 +3,6 @@
   community.zabbix.zabbix_template:
     template_name: "{{ zabbix_template_name }}"
     template_groups: "{{ zabbix_template_group }}"
-    macros:
-      - macro: "{$DISK_USAGE_THRESHOLD}"
-        value: "90"
-      - macro: "{$CPU_LOAD_THRESHOLD}"
-        value: "10"
 
 - name: Get Template ID
   uri:
@@ -27,6 +22,10 @@
       id: 1
     return_content: yes
   register: template_id_result
+
+# Template Macros の作成・更新
+- name: Import Template Macros tasks
+  ansible.builtin.import_tasks: macros.yml
 
 # Template Items の作成
 - name: Import Template Items tasks
