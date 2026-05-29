@@ -1,0 +1,7 @@
+layout python3
+export ZABBIX_HOST=XXX
+export ZABBIX_PORT=XXX
+export ZABBIX_URL=http://$ZABBIX_HOST:$ZABBIX_PORT/api_jsonrpc.php
+export ZABBIX_API_TOKEN=XXX
+export CHATWORK_TOKEN=XXX
+export SLACK_OAUTH_TOKEN=xoxb-XXX
