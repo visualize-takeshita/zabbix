@@ -48,6 +48,17 @@ Each role in the `roles/` directory handles a specific Zabbix resource type:
 
 - **zabbix_hostgroup**: Manages host groups
 
+- **zabbix_media**: Manages Zabbix media types for notifications
+  - File structure:
+    - `tasks/main.yml`: Main task that imports media type tasks
+    - `tasks/media_type_chatwork.yml`: Chatwork webhook media type configuration
+  - Default role: Imports Chatwork webhook media type from `templates/media/chatwork/media_chatwork.yaml`
+  - **Chatwork Media Type**: WEBHOOK type with JavaScript implementation
+    - Parameters: `chatwork_token` (required), `chatwork_room_id` (required), plus event-related parameters
+    - Supports multiple event sources: Triggers, Discovery, Autoregistration, Internal, Service
+    - Message format: Chatwork-specific `[info][title]...[/title]...[/info]` style
+    - Features: Parameter validation, HTTP error handling, detailed logging via Zabbix.log
+
 ### Playbooks
 Top-level `.yml` files (e.g., `zabbix_user.yml`, `zabbix_template.yml`) are playbooks that:
 1. Target the `zabbix` host group
@@ -77,6 +88,7 @@ These are referenced in `hosts` inventory file via `lookup('env', '...')`
 ```bash
 direnv exec . ansible-playbook zabbix_user.yml
 direnv exec . ansible-playbook zabbix_template.yml
+direnv exec . ansible-playbook zabbix_media.yml
 ```
 
 Note: Always use `direnv exec .` to ensure environment variables are loaded.
