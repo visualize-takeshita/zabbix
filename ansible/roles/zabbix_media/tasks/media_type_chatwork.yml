@@ -1,77 +1,24 @@
 ---
-# Import Chatwork media type into Zabbix
-- name: Get Chatwork media type YAML
+# Create Chatwork webhook media type using community.zabbix module
+- name: Load Chatwork webhook configuration from YAML
   ansible.builtin.slurp:
     src: "{{ playbook_dir }}/../templates/media/chatwork/media_chatwork.yaml"
-  register: chatwork_yaml_content
+  register: chatwork_yaml_file
 
-- name: Parse Chatwork YAML configuration
+- name: Extract webhook configuration
   ansible.builtin.set_fact:
-    chatwork_config: "{{ (chatwork_yaml_content['content'] | b64decode | from_yaml).zabbix_export.media_types[0] }}"
+    chatwork_mediatype_config: "{{ (chatwork_yaml_file['content'] | b64decode | from_yaml).zabbix_export.media_types[0] }}"
 
-- name: Check if Chatwork media type already exists
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "mediatype.get"
-      params:
-        filter:
-          name: "{{ chatwork_config.name }}"
-      id: 1
-  register: chatwork_mediatype_check
-  changed_when: false
+- name: Create Chatwork webhook media type
+  community.zabbix.zabbix_mediatype:
+    name: "{{ chatwork_mediatype_config.name }}"
+    type: webhook
+    webhook_script: "{{ chatwork_mediatype_config.script }}"
+    webhook_params: "{{ chatwork_mediatype_config.parameters }}"
+    state: present
+  register: chatwork_mediatype_result
+  changed_when: chatwork_mediatype_result.changed
 
-- name: Create Chatwork media type (import YAML)
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "configuration.import"
-      params:
-        format: "yaml"
-        rules:
-          mediaTypes:
-            createMissing: true
-            updateExisting: true
-            deleteMissing: false
-        source: "{{ chatwork_yaml_content['content'] | b64decode }}"
-      id: 1
-  register: chatwork_import_result
-  when: chatwork_mediatype_check.json.result | length == 0
-  changed_when: chatwork_import_result.json.result.import == true
-
-- name: Update Chatwork media type if exists
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "mediatype.update"
-      params:
-        mediatypeid: "{{ chatwork_mediatype_check.json.result[0].mediatypeid }}"
-        name: "{{ chatwork_config.name }}"
-        type: "{{ chatwork_config.type }}"
-        status: "{{ 0 if chatwork_config.status == 'ENABLED' else 1 }}"
-      id: 1
-  register: chatwork_update_result
-  when: chatwork_mediatype_check.json.result | length > 0
-  changed_when: chatwork_update_result.json.result.mediatypeids | length > 0
-
-- name: Debug Chatwork media type result
+- name: Debug media type creation result
   debug:
-    msg: "Chatwork media type imported/updated successfully"
+    msg: "Chatwork media type {{ 'created' if chatwork_mediatype_result.changed else 'already exists' }}"
