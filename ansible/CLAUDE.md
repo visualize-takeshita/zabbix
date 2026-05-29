@@ -48,16 +48,18 @@ Each role in the `roles/` directory handles a specific Zabbix resource type:
 
 - **zabbix_hostgroup**: Manages host groups
 
-- **zabbix_import_chatwork**: Imports Chatwork webhook media type for notifications
+- **zabbix_media**: Manages Zabbix media types for notifications (Chatwork, Slack, etc.)
   - File structure:
-    - `tasks/main.yml`: Main task that imports Chatwork media type
-    - `tasks/media_type_chatwork.yml`: Chatwork webhook configuration via `community.zabbix.zabbix_mediatype`
-  - Loads configuration from `templates/media/chatwork/media_chatwork.yaml`
+    - `tasks/main.yml`: Main task that imports media type tasks
+    - `tasks/media_type_chatwork.yml`: Chatwork webhook media type import via `community.zabbix.zabbix_mediatype`
+    - `tasks/enable_media.yml`: Enable and configure media types with environment variables
+  - Loads Chatwork configuration from `templates/media/chatwork/media_chatwork.yaml`
   - **Chatwork Media Type**: WEBHOOK type with JavaScript implementation
-    - Parameters: `chatwork_token` (required), `chatwork_room_id` (required), plus event-related parameters
+    - Configuration: Token from `CHATWORK_TOKEN`, Room ID from `CHATWORK_ROOM_ID` env vars
+    - Parameters: alert_subject, alert_message, event-related parameters
     - Supports multiple event sources: Triggers, Discovery, Autoregistration, Internal, Service
     - Message format: Chatwork-specific `[info][title]...[/title]...[/info]` style
-    - Features: Parameter validation, HTTP error handling, detailed logging via Zabbix.log
+  - **Slack Media Type**: Support via environment variables `SLACK_OAUTH_TOKEN`, `SLACK_WEBHOOK_URL`
 
 ### Playbooks
 Top-level `.yml` files (e.g., `zabbix_user.yml`, `zabbix_template.yml`) are playbooks that:
@@ -88,7 +90,7 @@ These are referenced in `hosts` inventory file via `lookup('env', '...')`
 ```bash
 direnv exec . ansible-playbook zabbix_user.yml
 direnv exec . ansible-playbook zabbix_template.yml
-direnv exec . ansible-playbook zabbix_import_chatwork.yml
+direnv exec . ansible-playbook zabbix_media.yml
 ```
 
 Note: Always use `direnv exec .` to ensure environment variables are loaded.

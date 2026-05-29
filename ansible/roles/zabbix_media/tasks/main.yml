@@ -1,0 +1,7 @@
+---
+# Main tasks for zabbix_media role
+- name: Import Chatwork media type definition
+  ansible.builtin.import_tasks: media_type_chatwork.yml
+
+- name: Import Slack media type definition
+  ansible.builtin.import_tasks: media_type_slack.yml

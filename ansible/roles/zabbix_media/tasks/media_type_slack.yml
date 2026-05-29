@@ -1,0 +1,42 @@
+---
+# Import Slack webhook media type using community.zabbix module
+- name: Load Slack webhook configuration from YAML file
+  ansible.builtin.slurp:
+    src: "{{ role_path }}/templates/media_slack.yaml"
+  register: slack_yaml_file
+
+- name: Substitute token and extract webhook configuration
+  ansible.builtin.set_fact:
+    slack_mediatype_config: "{{ (slack_yaml_file['content'] | b64decode | regex_replace('\\{\\{ lookup\\(\"env\", \"SLACK_OAUTH_TOKEN\"\\) \\}\\}', lookup('env', 'SLACK_OAUTH_TOKEN')) | from_yaml).zabbix_export.media_types[0] }}"
+
+- name: Check if Slack media type already exists
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "mediatype.get"
+      params:
+        filter:
+          name: "Slack"
+      id: 1
+  register: slack_check_result
+
+- name: Import Slack webhook media type
+  community.zabbix.zabbix_mediatype:
+    name: "{{ slack_mediatype_config.name }}"
+    type: webhook
+    webhook_script: "{{ slack_mediatype_config.script }}"
+    webhook_params: "{{ slack_mediatype_config.parameters }}"
+    state: present
+    status: "enabled"
+  register: slack_mediatype_result
+  when: slack_check_result.json.result | length == 0
+
+- name: Display media type import result
+  debug:
+    msg: "Slack media type {{ 'created' if slack_mediatype_result.changed else 'already exists' }}"

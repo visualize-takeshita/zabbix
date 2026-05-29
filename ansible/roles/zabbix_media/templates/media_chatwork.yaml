@@ -9,9 +9,9 @@ zabbix_export:
         - name: alert_subject
           value: '{ALERT.SUBJECT}'
         - name: chatwork_room_id
-          value: '<PLACE YOUR ROOM ID>'
+          value: '{ALERT.SENDTO}'
         - name: chatwork_token
-          value: '<PLACE YOUR TOKEN>'
+          value: '{{ lookup("env", "CHATWORK_TOKEN") }}'
         - name: event_nseverity
           value: '{EVENT.NSEVERITY}'
         - name: event_severity
