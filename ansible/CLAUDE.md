@@ -26,11 +26,17 @@ Each role in the `roles/` directory handles a specific Zabbix resource type:
   - Defaults in `defaults/main.yml` define template name and group
   - Default template: "Linux minimal" with:
     - User macros: `{$DISK_USAGE_THRESHOLD}` (default: 90)
-    - **LLD discovery rule** (`vfs.fs.discovery`): Auto-discovers mounted filesystems
+    - **Template Items**: Basic monitoring items created via `community.zabbix.zabbix_item`
+    - Simple agent items: CPU load, memory available, filesystem usage, etc.
+    - Calculated items: Memory usage % computed from Memory available % using formula
+    - **Note**: For calculated items, the formula is specified in `params.params` (nested params key)
+    - Example: `params: "100 - last(/{HOST.HOST}/vm.memory.size[pavailable])"`
+  - **Template Triggers**: Created via JSON-RPC for direct API control
+  - **LLD discovery rule** (`vfs.fs.discovery`): Auto-discovers mounted filesystems
     - **Filter configuration**: Excludes specific mount points (/, /var/lib/mysql, /var/sy, /backup) using NOT_MATCHES_REGEX
     - **Item prototypes**: Per-filesystem disk usage monitoring (`vfs.fs.size[{#FSNAME},pused]`)
     - **Trigger prototypes**: Alerts when disk usage exceeds `{$DISK_USAGE_THRESHOLD}%`
-  - Uses JSON-RPC directly for features not supported by Ansible modules (filters, complex configurations)
+  - Uses `community.zabbix.zabbix_item` for template items; JSON-RPC for features requiring direct API control (filters, etc.)
 
 - **zabbix_user**: Manages Zabbix users and roles
   - Currently disables default Admin/Guest users and updates Zabbix server host configuration

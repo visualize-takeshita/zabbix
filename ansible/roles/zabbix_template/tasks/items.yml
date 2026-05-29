@@ -1,38 +1,17 @@
 ---
 # Template Items の作成
-- name: Create template items via JSON-RPC
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: item.create
-      params: >-
-        {{
-          {
-            'name': item.name,
-            'key_': item.key,
-            'hostid': template_id_result.json.result[0].templateid,
-            'type': 15 if item.type | default('') == 'calculated' else 0,
-            'value_type': 0 if item.value_type == 'numeric_float' else 3,
-            'delay': item.interval,
-          } | combine(
-            {'units': item.units} if item.units is defined else {}
-          ) | combine(
-            {'params': item.params} if item.params is defined else {}
-          )
-        }}
-      id: "{{ 10 + (ansible_loop.index0 | int) }}"
-    return_content: yes
-    status_code: [200, -1]
+- name: Create template items
+  community.zabbix.zabbix_item:
+    name: "{{ item.name }}"
+    template_name: "{{ zabbix_template_name }}"
+    state: present
+    params:
+      type: "{{ 'calculated' if item.type | default('') == 'calculated' else 'zabbix_agent' }}"
+      key: "{{ item.key }}"
+      value_type: "{{ item.value_type }}"
+      units: "{{ item.units | default(omit) }}"
+      interval: "{{ item.interval }}"
+      params: "{{ item.params | default(omit) }}"
   loop: "{{ zabbix_items }}"
-  loop_control:
-    extended: yes
   register: items_result
-  failed_when:
-    - items_result.json.error is defined
-    - items_result.json.error.data is not search("already exists")
+  changed_when: items_result.changed

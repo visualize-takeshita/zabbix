@@ -9,18 +9,24 @@ zabbix_items:
     value_type: numeric_float
     interval: 60s
 
+  - name: Memory available %
+    key: vm.memory.size[pavailable]
+    value_type: numeric_float
+    units: '%'
+    interval: 5m
+
   - name: Memory usage %
     type: calculated
     key: memory.usage.percent
     value_type: numeric_float
     units: '%'
-    params: '100 - last(//vm.memory.size[pavailable])'
-    interval: 60s
+    params: '100 - last(/{HOST.HOST}/vm.memory.size[pavailable])'
+    interval: 5m
 
   - name: Root FS usage
     key: vfs.fs.size[/,pused]
     value_type: numeric_float
-    interval: 300s
+    interval: 5m
 
   - name: Agent ping
     key: agent.ping

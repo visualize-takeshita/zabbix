@@ -6,6 +6,9 @@
 
 - Zabbix テンプレートの作成
 - ユーザーマクロの定義
+- テンプレートアイテムの作成（CPU、メモリ、ディスク など）
+- 計算式アイテムの作成（メモリ使用率の自動計算）
+- トリガーの自動作成
 - ファイルシステム自動検出（LLD）の設定
 - ファイルシステムフィルタの設定（特定のマウントポイントを除外）
 - ディスク使用率監視アイテムの自動作成
@@ -47,6 +50,9 @@ roles/zabbix_template/
 │   └── main.yml                # デフォルト変数
 └── tasks/
     ├── main.yml                # メインタスク（テンプレート作成と各タスクの import）
+    ├── macros.yml              # Template Macros 作成・更新
+    ├── items.yml               # Template Items 作成
+    ├── triggers.yml            # Template Triggers 作成
     ├── discovery.yml           # Discovery Rule 作成とフィルタ設定
     ├── itemprototype.yml       # Item Prototype 作成
     └── triggerprototype.yml    # Trigger Prototype 作成
@@ -75,7 +81,44 @@ roles/zabbix_template/
 - `/var/sy`
 - `/backup`
 
-### 3. Item Prototype（アイテムプロトタイプ）
+### 3. Template Items（テンプレートアイテム）
+
+テンプレートレベルで定義される基本的な監視アイテム：
+
+#### 基本アイテム
+- **CPU Load 1min**: `system.cpu.load[all,avg1]` - 1分間の平均 CPU 負荷
+- **Memory available %**: `vm.memory.size[pavailable]` - 利用可能なメモリ（%）、5分間隔
+- **Root FS usage**: `vfs.fs.size[/,pused]` - ルートファイルシステムの使用率
+- **Agent ping**: `agent.ping` - Zabbix Agent の応答確認
+- **System uptime**: `system.uptime` - システムの稼働時間
+
+#### 計算式アイテム
+- **Memory usage %**: `memory.usage.percent`
+  - **タイプ**: 計算式（Calculated）
+  - **計算式**: `100 - last(/{HOST.HOST}/vm.memory.size[pavailable])`
+  - **説明**: Memory available % を基に使用率を計算
+  - **注意**: Memory available % アイテムが存在してデータを収集している必要があります
+
+#### 実装例
+`community.zabbix.zabbix_item` モジュールを使用：
+```yaml
+- name: メモリ使用率の計算アイテムを作成
+  community.zabbix.zabbix_item:
+    name: "Memory usage %"
+    template_name: "{{ zabbix_template_name }}"
+    state: present
+    params:
+      type: "calculated"
+      key: "memory.usage.percent"
+      value_type: "numeric_float"
+      units: "%"
+      interval: "1m"
+      params: "100 - last(/{HOST.HOST}/vm.memory.size[pavailable])"
+```
+
+**重要**: 計算式は `params` ディクショナリ内の `params` キーに指定します。
+
+### 4. Item Prototype（アイテムプロトタイプ）
 - **名前**: `{#FSNAME}:Used space`
 - **Key**: `vfs.fs.size[{#FSNAME},pused]`
 - **タイプ**: Zabbix agent
@@ -84,7 +127,7 @@ roles/zabbix_template/
 
 自動検出された各ファイルシステムに対して、使用率（%）を監視するアイテムが自動生成されます。
 
-### 4. Trigger Prototype（トリガープロトタイプ）
+### 5. Trigger Prototype（トリガープロトタイプ）
 - **名前**: `Disk usage is more than {$DISK_USAGE_THRESHOLD}% on volume {#FSNAME}`
 - **式**: `last(/Linux minimal/vfs.fs.size[{#FSNAME},pused])>{$DISK_USAGE_THRESHOLD}`
 - **深刻度**: Warning

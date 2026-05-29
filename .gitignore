@@ -16,3 +16,8 @@ Thumbs.db
 
 # direnv
 .direnv/
+.aider*
+
+# Project-specific
+.claude/
+.harness-mem/
