@@ -1,8 +1,0 @@
----
-# Default variables for zabbix_media role
-# Media types configuration can be extended here for different integrations
-# Examples: Slack, Teams, Discord, etc.
-
-zabbix_media_types:
-  - name: Chatwork
-    enabled: true

@@ -1,0 +1,3 @@
+---
+# Default variables for zabbix_import_chatwork role
+# This role imports the Chatwork webhook media type from templates/media/chatwork/media_chatwork.yaml
