@@ -18,6 +18,9 @@
   register: zabbix_result
   failed_when: zabbix_result.json.error is defined
 
+- name: Import user media tasks
+  ansible.builtin.import_tasks: user_media.yml
+
 - name: Update Zabbix server host interface and template
   community.zabbix.zabbix_host:
     host_name: "Zabbix server"

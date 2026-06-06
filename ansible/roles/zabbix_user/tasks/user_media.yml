@@ -1,0 +1,51 @@
+---
+# Add media (notification methods) to user tk
+- name: Get Chatwork media type
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "mediatype.get"
+      params:
+        filter:
+          name: "Chatwork"
+      id: 1
+  register: chatwork_mediatype_result
+
+- name: Get Slack media type
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "mediatype.get"
+      params:
+        filter:
+          name: "Slack"
+      id: 1
+  register: slack_mediatype_result
+
+- name: Configure user tk with media
+  community.zabbix.zabbix_user:
+    username: "tk"
+    user_medias:
+      - mediatypeid: "{{ chatwork_mediatype_result.json.result[0].mediatypeid }}"
+        sendto: "321771680"
+        period: "1-7,00:00-24:00"
+        severity: "56"
+        active: 1
+      - mediatypeid: "{{ slack_mediatype_result.json.result[0].mediatypeid }}"
+        sendto: "alert"
+        period: "1-7,00:00-24:00"
+        severity: "56"
+        active: 1
+    state: present
