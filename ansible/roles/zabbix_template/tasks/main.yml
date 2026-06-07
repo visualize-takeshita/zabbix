@@ -22,6 +22,7 @@
       id: 1
     return_content: yes
   register: template_id_result
+  check_mode: no
 
 # Template Macros の作成・更新
 - name: Import Template Macros tasks

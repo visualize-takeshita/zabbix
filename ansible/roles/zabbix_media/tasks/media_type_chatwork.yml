@@ -25,6 +25,7 @@
           name: "Chatwork"
       id: 1
   register: chatwork_check_result
+  check_mode: no
 
 - name: Import Chatwork webhook media type
   community.zabbix.zabbix_mediatype:

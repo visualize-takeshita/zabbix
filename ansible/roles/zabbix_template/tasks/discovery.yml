@@ -11,10 +11,6 @@
         enabled: True
   register: discoveryrule_result
 
-#- name: Debug Discovery Rule result
-#  debug:
-#    var: discoveryrule_result
-
 - name: Get current discovery rule filter
   uri:
     url: "{{ lookup('env', 'ZABBIX_URL') }}"
@@ -32,6 +28,7 @@
       id: 1
     return_content: yes
   register: current_filter
+  check_mode: no
 
 - name: Update discovery rule filter
   uri:
@@ -55,6 +52,7 @@
       id: 2
     return_content: yes
   register: discoveryrule_filter_result
+  check_mode: no
     #changed_when: >
     #current_filter.json.result[0].filter.evaltype | string != "0" or
     #current_filter.json.result[0].filter.conditions | length == 0 or

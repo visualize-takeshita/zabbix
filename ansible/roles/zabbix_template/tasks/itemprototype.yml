@@ -24,6 +24,7 @@
     return_content: yes
     status_code: [200, -1]
   register: itemprototype_result
+  check_mode: no
   failed_when:
     - itemprototype_result.json.error is defined
     - itemprototype_result.json.error.data is not search("already exists")

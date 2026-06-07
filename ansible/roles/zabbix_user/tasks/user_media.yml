@@ -1,51 +1,20 @@
 ---
 # Add media (notification methods) to user tk
-- name: Get Chatwork media type
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "mediatype.get"
-      params:
-        filter:
-          name: "Chatwork"
-      id: 1
-  register: chatwork_mediatype_result
-
-- name: Get Slack media type
-  uri:
-    url: "{{ lookup('env', 'ZABBIX_URL') }}"
-    method: POST
-    headers:
-      Content-Type: application/json-rpc
-      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "mediatype.get"
-      params:
-        filter:
-          name: "Slack"
-      id: 1
-  register: slack_mediatype_result
+# Note: Media configuration for Zabbix 7.4 requires a different API approach
+# In Zabbix 7.4, media types are created separately (zabbix_media role)
+#d User media linkage requires investigation of the correct API method/parameters
 
 - name: Configure user tk with media
   community.zabbix.zabbix_user:
     username: "tk"
+    usrgrps:
+      - "Zabbix administrators"
+    passwd: "{{ lookup('env', 'ZABBIX_USER_PASSWORD') }}"
+    role_name: "Super admin role"
     user_medias:
-      - mediatypeid: "{{ chatwork_mediatype_result.json.result[0].mediatypeid }}"
+      - mediatype: "Chatwork"
         sendto: "321771680"
         period: "1-7,00:00-24:00"
-        severity: "56"
-        active: 1
-      - mediatypeid: "{{ slack_mediatype_result.json.result[0].mediatypeid }}"
+      - mediatype: "Slack"
         sendto: "alert"
         period: "1-7,00:00-24:00"
-        severity: "56"
-        active: 1
-    state: present

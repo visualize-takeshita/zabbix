@@ -1,0 +1,21 @@
+---
+# Main playbook to configure Zabbix monitoring infrastructure
+# Executes all Zabbix configuration roles in dependency order
+
+- name: Configure Zabbix Host Groups
+  import_playbook: zabbix_hostgroup.yml
+
+- name: Configure Zabbix Media Types
+  import_playbook: zabbix_media.yml
+
+- name: Configure Zabbix Users
+  import_playbook: zabbix_user.yml
+
+- name: Configure Zabbix Proxies
+  import_playbook: zabbix_proxy.yml
+
+- name: Configure Zabbix Templates
+  import_playbook: zabbix_template.yml
+
+- name: Configure Zabbix Actions
+  import_playbook: zabbix_action.yml

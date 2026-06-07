@@ -18,6 +18,7 @@
   register: zabbix_result
   failed_when: zabbix_result.json.error is defined
 
+# TODO: Implement user media configuration for Zabbix 7.4
 - name: Import user media tasks
   ansible.builtin.import_tasks: user_media.yml
 

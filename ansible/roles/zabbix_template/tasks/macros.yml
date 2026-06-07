@@ -17,6 +17,7 @@
       id: 5
     return_content: yes
   register: current_macros
+  check_mode: no
 
 - name: Create or update template macros via JSON-RPC
   uri:
@@ -54,6 +55,7 @@
   vars:
     existing_macro: "{{ current_macros.json.result | selectattr('macro', 'equalto', macro.macro) | first | default({}) }}"
   register: macros_result
+  check_mode: no
   changed_when: >
     macros_result.json.result is defined and (
       existing_macro.hostmacroid is not defined or

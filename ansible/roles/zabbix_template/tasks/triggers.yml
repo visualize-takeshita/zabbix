@@ -32,6 +32,7 @@
     loop_var: trigger
     extended: yes
   register: triggers_result
+  check_mode: no
   failed_when:
     - triggers_result.json.error is defined
     - triggers_result.json.error.data is not search("already exists")
