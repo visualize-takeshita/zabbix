@@ -59,3 +59,58 @@
     #current_filter.json.result[0].filter.conditions[0].macro != '{#FSNAME}' or
     #current_filter.json.result[0].filter.conditions[0].value != "^/$|^/var/lib/mysql$|^/var/sy$|^/backup$" or
     #current_filter.json.result[0].filter.conditions[0].operator | string != "8"
+
+# Network Interface Discovery Rule
+- name: Create Network Interface Discovery Rule
+  community.zabbix.zabbix_discoveryrule:
+    name: "net.if"
+    template_name: "{{ zabbix_template_name }}"
+    params:
+        type: zabbix_agent
+        key: 'net.if.discovery'
+        interval: 1h
+        enabled: True
+  register: netif_discoveryrule_result
+
+- name: Get current network interface discovery rule filter
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: discoveryrule.get
+      params:
+        itemids: "{{ netif_discoveryrule_result.result[0].itemids[0] }}"
+        selectFilter: extend
+      id: 1
+    return_content: yes
+  register: current_netif_filter
+  check_mode: no
+
+- name: Update network interface discovery rule filter
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "discoveryrule.update"
+      params:
+        itemid: "{{ netif_discoveryrule_result.result[0].itemids[0] }}"
+        filter:
+          evaltype: 0
+          conditions:
+            - macro: "{{ '{#IFNAME}' }}"
+              value: "eth0"
+              operator: 9
+      id: 2
+    return_content: yes
+  register: netif_discoveryrule_filter_result
+  check_mode: no

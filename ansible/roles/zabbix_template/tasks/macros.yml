@@ -49,6 +49,8 @@
       value: "90"
     - macro: "{$CPU_LOAD_THRESHOLD}"
       value: "10"
+    - macro: "{$NETWORK_TRAFFIC_THRESHOLD}"
+      value: "50000000"
   loop_control:
     loop_var: macro
     extended: yes

@@ -28,3 +28,63 @@
   failed_when:
     - itemprototype_result.json.error is defined
     - itemprototype_result.json.error.data is not search("already exists")
+
+# Network Interface In (Receive) Item Prototype
+- name: Create Network Interface In Item Prototype via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.create
+      params:
+        hostid: "{{ template_id_result.json.result[0].templateid }}"
+        name: "{{ '{#IFNAME}: Receive traffic' }}"
+        key_: "{{ 'net.if.in[{#IFNAME}]' }}"
+        ruleid: "{{ netif_discoveryrule_result.result[0].itemids[0] }}"
+        type: 0
+        value_type: 3
+        delay: 1m
+        status: 0
+      id: 4
+    return_content: yes
+    status_code: [200, -1]
+  register: itemprototype_ifin_result
+  check_mode: no
+  failed_when:
+    - itemprototype_ifin_result.json.error is defined
+    - itemprototype_ifin_result.json.error.data is not search("already exists")
+
+# Network Interface Out (Send) Item Prototype
+- name: Create Network Interface Out Item Prototype via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.create
+      params:
+        hostid: "{{ template_id_result.json.result[0].templateid }}"
+        name: "{{ '{#IFNAME}: Send traffic' }}"
+        key_: "{{ 'net.if.out[{#IFNAME}]' }}"
+        ruleid: "{{ netif_discoveryrule_result.result[0].itemids[0] }}"
+        type: 0
+        value_type: 3
+        delay: 1m
+        status: 0
+      id: 5
+    return_content: yes
+    status_code: [200, -1]
+  register: itemprototype_ifout_result
+  check_mode: no
+  failed_when:
+    - itemprototype_ifout_result.json.error is defined
+    - itemprototype_ifout_result.json.error.data is not search("already exists")

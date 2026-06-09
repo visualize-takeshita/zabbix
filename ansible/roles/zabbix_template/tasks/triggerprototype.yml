@@ -8,3 +8,23 @@
       severity: warning
       expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_name }}{% raw %}/vfs.fs.size[{#FSNAME},pused])>{$DISK_USAGE_THRESHOLD}{% endraw %}'
       enabled: True
+
+# Network Interface In Trigger Prototype
+- name: Create Network Interface In Trigger Prototype
+  community.zabbix.zabbix_triggerprototype:
+    name: '{% raw %}Network interface {#IFNAME} receive traffic exceeds {$NETWORK_TRAFFIC_THRESHOLD}{% endraw %}'
+    template_name: "{{ zabbix_template_name }}"
+    params:
+      severity: warning
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_name }}{% raw %}/net.if.in[{#IFNAME}])>{$NETWORK_TRAFFIC_THRESHOLD}{% endraw %}'
+      enabled: True
+
+# Network Interface Out Trigger Prototype
+- name: Create Network Interface Out Trigger Prototype
+  community.zabbix.zabbix_triggerprototype:
+    name: '{% raw %}Network interface {#IFNAME} send traffic exceeds {$NETWORK_TRAFFIC_THRESHOLD}{% endraw %}'
+    template_name: "{{ zabbix_template_name }}"
+    params:
+      severity: warning
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_name }}{% raw %}/net.if.out[{#IFNAME}])>{$NETWORK_TRAFFIC_THRESHOLD}{% endraw %}'
+      enabled: True
