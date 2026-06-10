@@ -42,6 +42,59 @@
   register: master_item_id
   check_mode: no
 
+# Get existing dependent items to delete them
+- name: Get existing Dependent Items
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: item.get
+      params:
+        hostids: "{{ template_mysql_id.json.result[0].templateid }}"
+        filter:
+          key_:
+            - "mysql.threads_connected"
+            - "mysql.threads_running"
+            - "mysql.max_used_connections"
+            - "mysql.questions"
+            - "mysql.com_select"
+            - "mysql.com_insert"
+            - "mysql.com_update"
+            - "mysql.com_delete"
+            - "mysql.bytes_received"
+            - "mysql.bytes_sent"
+            - "mysql.aborted_connects"
+        output: ["itemid"]
+      id: 3
+    return_content: yes
+  register: existing_dependent_items
+  check_mode: no
+
+# Delete existing dependent items
+- name: Delete existing Dependent Items
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: item.delete
+      params: "{{ existing_dependent_items.json.result | map(attribute='itemid') | list }}"
+      id: 4
+    return_content: yes
+    status_code: [200, -1]
+  register: delete_result
+  check_mode: no
+  when: existing_dependent_items.json.result | length > 0
+
 # Create Dependent Items
 - name: Create Dependent Items via JSON-RPC
   uri:
@@ -65,9 +118,9 @@
         status: 0
         preprocessing:
           - type: 12
-            params: "{{ dependent_item.field }}"
+            params: "{{ '$.%s' | format(dependent_item.field) }}"
             error_handler: 0
-      id: "{{ 100 + item_index }}"
+      id: "{{ 10 + item_index }}"
     return_content: yes
     status_code: [200, -1]
   loop: "{{ mysql_dependent_items }}"
