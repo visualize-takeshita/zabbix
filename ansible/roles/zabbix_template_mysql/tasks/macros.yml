@@ -1,0 +1,58 @@
+---
+# Template Macros の作成・更新
+- name: Get current template macros
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: usermacro.get
+      params:
+        hostids: "{{ template_id_result.json.result[0].templateid }}"
+        output: extend
+      id: 5
+    return_content: yes
+  register: current_macros
+  check_mode: no
+
+- name: Create or update template macros via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body: >-
+      {{
+        {
+          'jsonrpc': '2.0',
+          'method': existing_macro.hostmacroid is defined | ternary('usermacro.update', 'usermacro.create'),
+          'params': {
+            'hostmacroid': existing_macro.hostmacroid
+          } if existing_macro.hostmacroid is defined else {} | combine({
+            'hostid': template_id_result.json.result[0].templateid,
+            'macro': macro.macro,
+            'value': macro.value
+          }),
+          'id': 6 + ansible_loop.index0
+        }
+      }}
+    return_content: yes
+    status_code: [200, -1]
+  loop:
+    - macro: "{$MYSQL_THREADS_THRESHOLD}"
+      value: "100"
+    - macro: "{$MYSQL_CONNECTIONS_THRESHOLD}"
+      value: "500"
+  loop_control:
+    loop_var: macro
+    extended: yes
+  vars:
+    existing_macro: "{{ current_macros.json.result | selectattr('macro', 'equalto', macro.macro) | first | default({}) }}"
+  register: macros_result
+  check_mode: no

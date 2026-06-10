@@ -1,0 +1,30 @@
+---
+# MySQL Threads Connected Trigger
+- name: Create MySQL Threads Connected Trigger
+  community.zabbix.zabbix_trigger:
+    name: "{% raw %}MySQL threads connected exceeds {$MYSQL_THREADS_THRESHOLD} on {HOST.NAME}{% endraw %}"
+    template_name: "{{ zabbix_template_mysql_name }}"
+    params:
+      severity: warning
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_mysql_name }}{% raw %}/mysql.threads_connected)>{$MYSQL_THREADS_THRESHOLD}{% endraw %}'
+      enabled: True
+
+# MySQL Max Used Connections Trigger
+- name: Create MySQL Max Used Connections Trigger
+  community.zabbix.zabbix_trigger:
+    name: "{% raw %}MySQL max used connections exceeds {$MYSQL_CONNECTIONS_THRESHOLD} on {HOST.NAME}{% endraw %}"
+    template_name: "{{ zabbix_template_mysql_name }}"
+    params:
+      severity: warning
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_mysql_name }}{% raw %}/mysql.max_used_connections)>{$MYSQL_CONNECTIONS_THRESHOLD}{% endraw %}'
+      enabled: True
+
+# MySQL Aborted Connects Trigger
+- name: Create MySQL Aborted Connects Trigger
+  community.zabbix.zabbix_trigger:
+    name: "{% raw %}MySQL aborted connects detected on {HOST.NAME}{% endraw %}"
+    template_name: "{{ zabbix_template_mysql_name }}"
+    params:
+      severity: average
+      expression: '{% raw %}last(/{% endraw %}{{ zabbix_template_mysql_name }}{% raw %}/mysql.aborted_connects)>0{% endraw %}'
+      enabled: True

@@ -1,0 +1,13 @@
+---
+# Master Item - MySQL Status Variables
+- name: Create MySQL Status Variables Master Item
+  community.zabbix.zabbix_item:
+    name: "MySQL Status Variables"
+    template_name: "{{ zabbix_template_mysql_name }}"
+    params:
+      type: zabbix_agent
+      key: "{{ mysql_master_item_key }}"
+      delay: "{{ mysql_master_item_interval }}"
+      value_type: text
+      enabled: True
+  register: master_item_result

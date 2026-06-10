@@ -1,0 +1,85 @@
+---
+- name: Get template group ID
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: templategroup.get
+      params:
+        filter:
+          name: "{{ zabbix_template_mysql_group }}"
+        output: ["groupid"]
+      id: 1
+    return_content: yes
+  register: template_group_result
+  check_mode: no
+
+- name: Create MySQL template with tags
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: template.create
+      params:
+        host: "{{ zabbix_template_mysql_name }}"
+        groups:
+          - groupid: "{{ template_group_result.json.result[0].groupid }}"
+        tags:
+          - tag: "class"
+            value: "database"
+          - tag: "target"
+            value: "mysql"
+      id: 2
+    return_content: yes
+    status_code: [200, -1]
+  register: template_create_result
+  check_mode: no
+  failed_when:
+    - template_create_result.json.error is defined
+    - template_create_result.json.error.data is not search("already exists")
+
+- name: Get Template ID
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: template.get
+      params:
+        filter:
+          host: "{{ zabbix_template_mysql_name }}"
+        output: ["templateid"]
+      id: 3
+    return_content: yes
+  register: template_id_result
+  check_mode: no
+
+# Template Macros の作成・更新
+- name: Import Template Macros tasks
+  ansible.builtin.import_tasks: macros.yml
+
+# Master Item の作成
+- name: Import Master Item tasks
+  ansible.builtin.import_tasks: items.yml
+
+# Dependent Items の作成
+- name: Import Dependent Items tasks
+  ansible.builtin.import_tasks: dependent_items.yml
+
+# Template Triggers の作成
+- name: Import Template Triggers tasks
+  ansible.builtin.import_tasks: triggers.yml

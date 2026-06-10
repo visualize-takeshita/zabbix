@@ -1,0 +1,81 @@
+---
+# Get Template ID for itemid reference
+- name: Get Template ID for items
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: template.get
+      params:
+        filter:
+          host: "{{ zabbix_template_mysql_name }}"
+        output: ["templateid"]
+      id: 1
+    return_content: yes
+  register: template_mysql_id
+  check_mode: no
+
+# Get Master Item ID
+- name: Get Master Item ID
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: item.get
+      params:
+        hostids: "{{ template_mysql_id.json.result[0].templateid }}"
+        filter:
+          key_: "{{ mysql_master_item_key }}"
+        output: ["itemid"]
+      id: 2
+    return_content: yes
+  register: master_item_id
+  check_mode: no
+
+# Create Dependent Items
+- name: Create Dependent Items via JSON-RPC
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: item.create
+      params:
+        hostid: "{{ template_mysql_id.json.result[0].templateid }}"
+        name: "{{ dependent_item.name }}"
+        key_: "{{ dependent_item.key }}"
+        type: 18
+        master_itemid: "{{ master_item_id.json.result[0].itemid }}"
+        value_type: 3
+        delay: 0
+        status: 0
+        preprocessing:
+          - type: 12
+            params: "{{ dependent_item.field }}"
+            error_handler: 0
+      id: "{{ 100 + item_index }}"
+    return_content: yes
+    status_code: [200, -1]
+  loop: "{{ mysql_dependent_items }}"
+  loop_control:
+    loop_var: dependent_item
+    index_var: item_index
+  register: dependent_items_result
+  check_mode: no
+  failed_when:
+    - dependent_items_result.json.error is defined
+    - dependent_items_result.json.error.data is not search("already exists")
