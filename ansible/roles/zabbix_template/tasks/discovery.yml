@@ -108,8 +108,8 @@
           evaltype: 0
           conditions:
             - macro: "{{ '{#IFNAME}' }}"
-              value: "eth0"
-              operator: 9
+              value: "^eth0$"
+              operator: 8
       id: 2
     return_content: yes
   register: netif_discoveryrule_filter_result
