@@ -66,8 +66,6 @@
             - "mysql.com_insert"
             - "mysql.com_update"
             - "mysql.com_delete"
-            - "mysql.bytes_received"
-            - "mysql.bytes_sent"
             - "mysql.aborted_connects"
         output: ["itemid"]
       id: 3

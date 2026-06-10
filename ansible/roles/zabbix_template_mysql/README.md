@@ -9,7 +9,6 @@ This role creates a comprehensive MySQL monitoring template for Zabbix.
   - Threads connected/running
   - Connection statistics
   - Query counts (SELECT, INSERT, UPDATE, DELETE)
-  - Network traffic (bytes received/sent)
   - Aborted connections
 - **Triggers**: Alerts for high thread usage and connection issues
 - **User Macros**: Configurable thresholds
@@ -41,8 +40,6 @@ This role creates a comprehensive MySQL monitoring template for Zabbix.
 | MySQL Insert | `mysql.com_insert` | Com_insert |
 | MySQL Update | `mysql.com_update` | Com_update |
 | MySQL Delete | `mysql.com_delete` | Com_delete |
-| MySQL Bytes received | `mysql.bytes_received` | Bytes_received |
-| MySQL Bytes sent | `mysql.bytes_sent` | Bytes_sent |
 | MySQL Aborted connects | `mysql.aborted_connects` | Aborted_connects |
 
 ### User Macros
