@@ -29,8 +29,76 @@
     - itemprototype_result.json.error is defined
     - itemprototype_result.json.error.data is not search("already exists")
 
-# Network Interface In (Receive) Item Prototype
-- name: Create Network Interface In Item Prototype via JSON-RPC
+# Get existing network interface item prototypes
+- name: Get existing Network Interface In item prototype
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.get
+      params:
+        hostids: "{{ template_id_result.json.result[0].templateid }}"
+        filter:
+          key_: "{{ 'net.if.in[{#IFNAME}]' }}"
+        output: ["itemid"]
+      id: 6
+    return_content: yes
+  register: existing_ifin_itemprototype
+  check_mode: no
+
+- name: Get existing Network Interface Out item prototype
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.get
+      params:
+        hostids: "{{ template_id_result.json.result[0].templateid }}"
+        filter:
+          key_: "{{ 'net.if.out[{#IFNAME}]' }}"
+        output: ["itemid"]
+      id: 7
+    return_content: yes
+  register: existing_ifout_itemprototype
+  check_mode: no
+
+# Update Network Interface In Item Prototype (if exists)
+- name: Update Network Interface In Item Prototype
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.update
+      params:
+        itemid: "{{ existing_ifin_itemprototype.json.result[0].itemid }}"
+        preprocessing:
+          - type: 10
+            params: ""
+            error_handler: 0
+      id: 8
+    return_content: yes
+    status_code: [200, -1]
+  register: itemprototype_ifin_result
+  check_mode: no
+  when: existing_ifin_itemprototype.json.result | length > 0
+
+# Create Network Interface In Item Prototype (if not exists)
+- name: Create Network Interface In Item Prototype
   uri:
     url: "{{ lookup('env', 'ZABBIX_URL') }}"
     method: POST
@@ -50,17 +118,44 @@
         value_type: 3
         delay: 1m
         status: 0
-      id: 4
+        preprocessing:
+          - type: 10
+            params: ""
+            error_handler: 0
+      id: 8
     return_content: yes
     status_code: [200, -1]
   register: itemprototype_ifin_result
   check_mode: no
-  failed_when:
-    - itemprototype_ifin_result.json.error is defined
-    - itemprototype_ifin_result.json.error.data is not search("already exists")
+  when: existing_ifin_itemprototype.json.result | length == 0
 
-# Network Interface Out (Send) Item Prototype
-- name: Create Network Interface Out Item Prototype via JSON-RPC
+# Update Network Interface Out Item Prototype (if exists)
+- name: Update Network Interface Out Item Prototype
+  uri:
+    url: "{{ lookup('env', 'ZABBIX_URL') }}"
+    method: POST
+    headers:
+      Content-Type: application/json-rpc
+      Authorization: "Bearer {{ lookup('env', 'ZABBIX_API_TOKEN') }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: itemprototype.update
+      params:
+        itemid: "{{ existing_ifout_itemprototype.json.result[0].itemid }}"
+        preprocessing:
+          - type: 10
+            params: ""
+            error_handler: 0
+      id: 9
+    return_content: yes
+    status_code: [200, -1]
+  register: itemprototype_ifout_result
+  check_mode: no
+  when: existing_ifout_itemprototype.json.result | length > 0
+
+# Create Network Interface Out Item Prototype (if not exists)
+- name: Create Network Interface Out Item Prototype
   uri:
     url: "{{ lookup('env', 'ZABBIX_URL') }}"
     method: POST
@@ -80,11 +175,13 @@
         value_type: 3
         delay: 1m
         status: 0
-      id: 5
+        preprocessing:
+          - type: 10
+            params: ""
+            error_handler: 0
+      id: 9
     return_content: yes
     status_code: [200, -1]
   register: itemprototype_ifout_result
   check_mode: no
-  failed_when:
-    - itemprototype_ifout_result.json.error is defined
-    - itemprototype_ifout_result.json.error.data is not search("already exists")
+  when: existing_ifout_itemprototype.json.result | length == 0
